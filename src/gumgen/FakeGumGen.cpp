@@ -22,6 +22,7 @@
 #include <Eigen/src/Geometry/Quaternion.h>
 #include "../util/MathTypeConverter.h"
 #include "../util/MeshFix.h"
+#include "../eigen_bezier/eigen_bezier.hpp"
 #include <igl/copyleft/cgal/mesh_boolean.h>
 #ifndef __EMSCRIPTEN__
 #include "tinycolormap.hpp"
