@@ -19,4 +19,4 @@ target_compile_definitions(GumGen PRIVATE GLOG_NO_ABBREVIATED_SEVERITIES)
 target_include_directories(GumGen PRIVATE dep/json/include)
 target_include_directories(GumGen PRIVATE dep/libigl/include)
 
-target_link_libraries(GumGen CGAL::CGAL Eigen3::Eigen)
+target_link_libraries(GumGen CGAL::CGAL Eigen3::Eigen Ceres::ceres)
