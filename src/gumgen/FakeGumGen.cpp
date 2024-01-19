@@ -483,7 +483,7 @@ FakeGumGen::GenerateOneStep( const std::array<Eigen::Matrix4f, 49>& transforms )
     //CGAL::Polygon_mesh_processing::fair(final_gum, smooth_vertices);
     //CGAL::Subdivision_method_3::Loop_subdivision( *_final_gums[step], CGAL::parameters::number_of_iterations( 1 ) );
     //CGAL::Polygon_mesh_processing::tangential_relaxation(CGAL::vertices(*_final_gums[step]), *_final_gums[step], CGAL::Polygon_mesh_processing::parameters::number_of_iterations(5));
-    //LaplacianSmooth( final_gum, 5, true );
+    LaplacianSmooth( final_gum, 5, true );
 
     ClipFinalGum( final_gum, new_bottom_pos );
     FixMesh(final_gum, true, 1000, true, false, 0, 0.f, false, 10);
