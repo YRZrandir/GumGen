@@ -65,7 +65,7 @@ void FakeGumBuilder2<HDS>::operator()( HDS& hds )
         for (int j = 0; j < points.size(); j++)
         {
             hVertex vh = builder.add_vertex( Point3( points[j].x(), points[j].y(), points[j].z() ) );
-            if (j == points.size() / 2 || j == points.size() - 1)
+            if (j == 0 || j == points.size() / 2 || j == points.size() - 1)
                 vh->label = 1;
             if (j == points.size() - 1)
                 vh->label = 2;

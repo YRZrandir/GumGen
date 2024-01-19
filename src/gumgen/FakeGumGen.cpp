@@ -13,6 +13,7 @@
 #include <CGAL/Polygon_mesh_processing/compute_normal.h>
 #include <CGAL/Polygon_mesh_processing/repair.h>
 #include <CGAL/Polygon_mesh_processing/triangulate_hole.h>
+#include <CGAL/Polygon_mesh_processing/remesh.h>
 #include <CGAL/subdivision_method_3.h>
 #include <CGAL/squared_distance_3.h>
 #include <CGAL/Polygon_mesh_processing/self_intersections.h>
@@ -451,23 +452,41 @@ FakeGumGen::GenerateOneStep( const std::array<Eigen::Matrix4f, 49>& transforms )
             }
         }
     }
-    final_gum.WriteOBJ("labeled_gum" + std::to_string(_config.upper) + ".obj");
+    // final_gum.WriteOBJ("labeled_gum" + std::to_string(_config.upper) + ".obj");
 
     std::vector<hFacet> smooth_faces;
+    std::vector<hVertex> smooth_vertices;
     for(auto hf = final_gum.facets_begin(); hf != final_gum.facets_end(); hf++)
     {
-        if(hf->halfedge()->vertex()->label != 1 && hf->halfedge()->prev()->vertex()->label != 1 && hf->halfedge()->next()->vertex()->label != 1)
+        int l0 = hf->halfedge()->vertex()->label;
+        int l1 = hf->halfedge()->prev()->vertex()->label;
+        int l2 = hf->halfedge()->next()->vertex()->label;
+        if(l0 == 1 || l1 == 1 || l2 == 1 || l0 == 2 || l1 == 2 || l2 == 2)
         {
-            smooth_faces.push_back(hf);
+            continue;
         }
+        smooth_faces.push_back(hf);
+        smooth_vertices.push_back(hf->halfedge()->vertex());
+        smooth_vertices.push_back(hf->halfedge()->next()->vertex());
+        smooth_vertices.push_back(hf->halfedge()->next()->next()->vertex());
     }
+
+    double target_len = 0.0;
+    for(auto hh : CGAL::halfedges(*_scanmesh))
+    {
+        target_len += std::sqrt(CGAL::squared_distance(hh->vertex()->point(), hh->next()->vertex()->point()));
+    }
+    target_len /= _scanmesh->size_of_halfedges() * 8;
+
+    //CGAL::Polygon_mesh_processing::isotropic_remeshing(smooth_faces, target_len, final_gum);
     CGAL::Polygon_mesh_processing::angle_and_area_smoothing( smooth_faces, final_gum, CGAL::Polygon_mesh_processing::parameters::number_of_iterations( 1 ).use_safety_constraints( false ) );
+    //CGAL::Polygon_mesh_processing::fair(final_gum, smooth_vertices);
     //CGAL::Subdivision_method_3::Loop_subdivision( *_final_gums[step], CGAL::parameters::number_of_iterations( 1 ) );
     //CGAL::Polygon_mesh_processing::tangential_relaxation(CGAL::vertices(*_final_gums[step]), *_final_gums[step], CGAL::Polygon_mesh_processing::parameters::number_of_iterations(5));
-    LaplacianSmooth( final_gum, 5, true );
+    //LaplacianSmooth( final_gum, 5, true );
 
     ClipFinalGum( final_gum, new_bottom_pos );
-    FixMesh(final_gum, true, 1000, false, true, 0, 0.f, false, 10);
+    FixMesh(final_gum, true, 1000, true, false, 0, 0.f, false, 10);
     if(_config.debug)
     {
         std::cout << "Validate final mesh...";
@@ -491,7 +510,7 @@ FakeGumGen::GenerateOneStep( const std::array<Eigen::Matrix4f, 49>& transforms )
     _weights = ComputeWeights( final_gum );
 
     //AlignGumMeshBackward( final_gum );
-    final_gum.UpdateNormal();
+    //final_gum.UpdateNormal();
     return final_gum;
 }
 
