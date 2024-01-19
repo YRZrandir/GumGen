@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 #include <CGAL/Polygon_mesh_processing/border.h>
 #include <CGAL/Polygon_mesh_processing/triangulate_faces.h>
+#include <CGAL/Polygon_mesh_processing/compute_normal.h>
 #include <CGAL/optimal_bounding_box.h>
 #include <CGAL/linear_least_squares_fitting_3.h>
 

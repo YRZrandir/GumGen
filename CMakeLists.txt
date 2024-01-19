@@ -15,7 +15,8 @@ add_executable(GumGen
         ${SRCS} ${UTIL_SRCS} ${GUM_SRCS} ${BEZIER_SRCS})
 
 target_compile_definitions(GumGen PRIVATE CGAL_PMP_USE_CERES_SOLVER)
+target_compile_definitions(GumGen PRIVATE GLOG_NO_ABBREVIATED_SEVERITIES)
 target_include_directories(GumGen PRIVATE dep/json/include)
 target_include_directories(GumGen PRIVATE dep/libigl/include)
 
-target_link_libraries(GumGen CGAL Eigen3::Eigen Ceres::ceres)
+target_link_libraries(GumGen CGAL::CGAL Eigen3::Eigen)
