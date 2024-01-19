@@ -283,7 +283,7 @@ public:
         }
         BuildFromVerticesIndices(vertices, indices);
     }
-    
+    void LoadLabels(const std::vector<int>& labels);
     std::vector<hHalfedge> FindHoles() const;
     std::vector<hHalfedge> HoleEdges(hHalfedge hh ) const;
     std::pair<std::vector<hFacet>, std::vector<hVertex>> CloseHole(hHalfedge hh, bool refine = false, bool refair = false);
@@ -410,12 +410,12 @@ inline void PolyhedronBuilderEigen<HDS>::operator()(HDS& hds)
     CGAL::Polyhedron_incremental_builder_3<HDS> builder( hds, true );
     builder.begin_surface(_V.rows(), _F.rows());
 
-    for(size_t i = 0; i < _V.rows(); i++)
+    for(Eigen::Index i = 0; i < _V.rows(); i++)
     {
         auto vh = builder.add_vertex(Point3( _V(i, 0), _V(i, 1), _V(i, 2) ));
     }
 
-    for(size_t i = 0; i < _F.rows(); i++)
+    for(Eigen::Index i = 0; i < _F.rows(); i++)
     {
         builder.begin_facet();
         builder.add_vertex_to_facet( _F(i, 0) );

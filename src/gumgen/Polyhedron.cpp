@@ -102,6 +102,19 @@ void Polyhedron::LoadFromEigen( const Eigen::MatrixXd& V, const Eigen::MatrixXi&
     delegate(builder);
 }
 
+void Polyhedron::LoadLabels( const std::vector<int>& labels )
+{
+    if(labels.size() != size_of_vertices())
+    {
+        return;
+    }
+    int i = 0;
+    for(auto hv = vertices_begin(); hv != vertices_end(); hv++)
+    {
+        hv->label = labels[i++];
+    }
+}
+
 std::vector<hHalfedge> Polyhedron::FindHoles() const
 {
     std::vector<hHalfedge> border_cycles;
@@ -471,7 +484,14 @@ void Polyhedron::WriteOBJ( const std::string& path ) const
     for(auto hv = vertices_begin(); hv != vertices_end(); hv++)
     {
         vertex_id_map[hv] = v_count++;
-        ss << "v " << hv->point().x() << ' ' << hv->point().y() << ' ' << hv->point().z() << '\n';
+        if(hv->label == 1 || hv->label == 2)
+        {
+            ss << "v " << hv->point().x() << ' ' << hv->point().y() << ' ' << hv->point().z() << " 1 0 0 \n";
+        }
+        else
+        {
+            ss << "v " << hv->point().x() << ' ' << hv->point().y() << ' ' << hv->point().z() << " 1 1 1 \n";
+        }
     }
 
     std::unordered_map<decltype(halfedges_begin()), size_t> hedge_id_map;
@@ -501,7 +521,7 @@ void Polyhedron::WriteOBJ( const std::string& path ) const
 
 int Polyhedron::WriteTriangleSoupVN( float** pvertices, float** pnormals )
 {
-    int nb_vertices = size_of_facets() * 3;
+    int nb_vertices = static_cast<int>(size_of_facets()) * 3;
     *pvertices = new float[nb_vertices * 3];
     *pnormals = new float[nb_vertices * 3];
 
@@ -513,13 +533,13 @@ int Polyhedron::WriteTriangleSoupVN( float** pvertices, float** pnormals )
         for(int i = 0; i < 3; i++)
         {
             (*pvertices)[cnt] = static_cast<float>(p[i].x());
-            (*pnormals)[cnt] = n[i].x();
+            (*pnormals)[cnt] = static_cast<float>(n[i].x());
             cnt++;
             (*pvertices)[cnt] = static_cast<float>(p[i].y());
-            (*pnormals)[cnt] = n[i].y();
+            (*pnormals)[cnt] = static_cast<float>(n[i].y());
             cnt++;
             (*pvertices)[cnt] = static_cast<float>(p[i].z());
-            (*pnormals)[cnt] = n[i].z();
+            (*pnormals)[cnt] = static_cast<float>(n[i].z());
             cnt++;
         }
     }
@@ -587,7 +607,7 @@ float CotWeight( hVertex vi, hHalfedge hh /*point to vi*/ )
     double w = (cot_a + cot_b) / 2.0;
     if (std::isnan( w ) || std::isinf( w ))
         w = 0.f;
-    return w;
+    return static_cast<float>(w);
 }
 
 float FaceArea( hFacet hf )
@@ -595,5 +615,5 @@ float FaceArea( hFacet hf )
     Eigen::Vector3d p0 = ToEigen( hf->halfedge()->vertex()->point() );
     Eigen::Vector3d p1 = ToEigen( hf->halfedge()->next()->vertex()->point() );
     Eigen::Vector3d p2 = ToEigen( hf->halfedge()->prev()->vertex()->point() );
-    return std::abs( ((p1 - p0).cross( p2 - p0 )).norm() );
+    return static_cast<float>(std::abs( ((p1 - p0).cross( p2 - p0 )).norm() ));
 }

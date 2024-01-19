@@ -70,7 +70,7 @@ Scalar BernsteinPolynomial<Scalar>::Term(int i, Scalar t) const
     }
     for(int j = 0; j < (_degree - i); j++)
     {
-        tn_1 *= (1.0 - t);
+        tn_1 *= (static_cast<Scalar>(1.0) - t);
     }
     
     return  tn * tn_1 * _coeffs[i];

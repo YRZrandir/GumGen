@@ -12,6 +12,12 @@ class OralScanMesh : public Polyhedron {
 public:
     friend class FakeGumGen;
     OralScanMesh( bool upper );
+    OralScanMesh( const OralScanMesh& mesh ) : Polyhedron(mesh)
+    {
+        _obb_center = mesh._obb_center;
+        _obb_up = mesh._obb_up;
+        _upper = mesh._upper;
+    }
     void ReadJsonLabels( const std::string& path );
     void ReadLabels(const unsigned int* labels);
     void VertexLabelToFaceLabel();

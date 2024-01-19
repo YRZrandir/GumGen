@@ -426,6 +426,27 @@ void FixMeshWithLabel(
     output_mesh = m;
 }
 
-
+template <typename Polyhedron>
+void FixMeshWithLabel(
+    Polyhedron& mesh,
+    bool keep_largest_connected_component,
+    int large_cc_threshold,
+    bool fix_self_intersection,
+    bool filter_small_holes,
+    int max_hole_edges,
+    float max_hole_diam,
+    bool refine,
+    int max_retry
+)
+{
+    auto [vertices, faces] = mesh.ToVerticesTriangles();
+    std::vector<int> labels;
+    for(auto hv : CGAL::vertices(mesh))
+    {
+        labels.push_back(hv->label);
+    }
+    FixMeshWithLabel(vertices, faces, labels, mesh, keep_largest_connected_component,
+     large_cc_threshold, fix_self_intersection, filter_small_holes, max_hole_edges, max_hole_diam, refine, max_retry);
+}
 
 #endif

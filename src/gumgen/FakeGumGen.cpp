@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
+#include <CGAL/Orthogonal_k_neighbor_search.h>
+#include <CGAL/Search_traits_2.h>
+#include <CGAL/Search_traits_adapter.h>
 #include <CGAL/Polygon_mesh_processing/angle_and_area_smoothing.h>
 #include <CGAL/Polygon_mesh_processing/border.h>
 #include <CGAL/Polygon_mesh_processing/clip.h>
@@ -33,7 +36,7 @@ public:
     Timer() {}
     void start() { _start_time = std::chrono::high_resolution_clock::now(); }
     void stop() { _end_time = std::chrono::high_resolution_clock::now(); }
-    int time() { return std::chrono::duration_cast<std::chrono::milliseconds>(_end_time - _start_time).count(); }
+    int time() { return static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(_end_time - _start_time).count()); }
 
     std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
     std::chrono::time_point<std::chrono::high_resolution_clock> _end_time;
@@ -58,7 +61,7 @@ void write_gumline(const std::vector<Eigen::Vector3f>& polylines, std::string pa
         
         ofs1 << "v " << p.x() << ' ' << p.y() << ' ' << p.z() << ' ' << 0 << ' ' << 0 << ' ' << 0 << '\n';
     }
-    int end = polylines.size();
+    int end = static_cast<int>(polylines.size());
     if(!cycle)
         end -= 1;
     for(int gi = 0; gi < end; gi++)
@@ -90,15 +93,16 @@ FakeGumGen::FakeGumGen( FakeGumGenConfig config )
 #endif
     if(config.debug)
         std::cout << "Scanmesh: v=" << _scanmesh->size_of_vertices() << std::endl;
+    OralScanMesh ori_scanmesh = *_scanmesh;
 
-    _config.gum_width_list[11] = _config.gum_width_list[21] = _config.gum_width_list[31] = _config.gum_width_list[41] = 5.0f;
-    _config.gum_width_list[12] = _config.gum_width_list[22] = _config.gum_width_list[32] = _config.gum_width_list[42] = 5.5f;
-    _config.gum_width_list[13] = _config.gum_width_list[23] = _config.gum_width_list[33] = _config.gum_width_list[43] = 5.5f;
-    _config.gum_width_list[14] = _config.gum_width_list[24] = _config.gum_width_list[34] = _config.gum_width_list[44] = 5.5f;
-    _config.gum_width_list[15] = _config.gum_width_list[25] = _config.gum_width_list[35] = _config.gum_width_list[45] = 6.f;
-    _config.gum_width_list[16] = _config.gum_width_list[26] = _config.gum_width_list[36] = _config.gum_width_list[46] = 6.5f;
-    _config.gum_width_list[17] = _config.gum_width_list[27] = _config.gum_width_list[37] = _config.gum_width_list[47] = 8.f;
-    _config.gum_width_list[18] = _config.gum_width_list[28] = _config.gum_width_list[38] = _config.gum_width_list[48] = 8.f;
+    _config.gum_width_list[11] = _config.gum_width_list[21] = _config.gum_width_list[31] = _config.gum_width_list[41] = 3.5f;
+    _config.gum_width_list[12] = _config.gum_width_list[22] = _config.gum_width_list[32] = _config.gum_width_list[42] = 4.0f;
+    _config.gum_width_list[13] = _config.gum_width_list[23] = _config.gum_width_list[33] = _config.gum_width_list[43] = 4.0f;
+    _config.gum_width_list[14] = _config.gum_width_list[24] = _config.gum_width_list[34] = _config.gum_width_list[44] = 4.0f;
+    _config.gum_width_list[15] = _config.gum_width_list[25] = _config.gum_width_list[35] = _config.gum_width_list[45] = 4.5f;
+    _config.gum_width_list[16] = _config.gum_width_list[26] = _config.gum_width_list[36] = _config.gum_width_list[46] = 4.5f;
+    _config.gum_width_list[17] = _config.gum_width_list[27] = _config.gum_width_list[37] = _config.gum_width_list[47] = 5.f;
+    _config.gum_width_list[18] = _config.gum_width_list[28] = _config.gum_width_list[38] = _config.gum_width_list[48] = 5.f;
 
     _config.gum_depth_list[11] = _config.gum_depth_list[21] = _config.gum_depth_list[31] = _config.gum_depth_list[41] = 0.8f;
     _config.gum_depth_list[12] = _config.gum_depth_list[22] = _config.gum_depth_list[32] = _config.gum_depth_list[42] = 0.9f;
@@ -113,14 +117,14 @@ FakeGumGen::FakeGumGen( FakeGumGenConfig config )
     timer.start();
     std::cout << "Preprocessing scan mesh..." << std::endl;
     _scanmesh->RemoveGumPart();
-    _scanmesh->ComputeOrientation();
-    _scanmesh->AlignMesh();
+    //_scanmesh->ComputeOrientation();
+    //_scanmesh->AlignMesh();
     if(EXPORT_SCANMESH)
     {
-        CGAL::IO::write_PLY("scanmesh_toothpart.ply",  *_scanmesh);
+        CGAL::IO::write_PLY("scanmesh_toothpart" + std::to_string(_config.upper) + ".ply",  *_scanmesh);
     }
     auto aabb = _scanmesh->ComputeAABB();
-    _config.gum_bottom = _config.upper ? (aabb.zmax() + 10.f) : (aabb.zmin() - 10.f);
+    _config.gum_bottom = static_cast<float>(_config.upper ? (aabb.zmax() + 10.f) : (aabb.zmin() - 10.f));
     timer.stop();
     std::cout << "finish. "<< timer.time() << std::endl;
 
@@ -131,7 +135,7 @@ FakeGumGen::FakeGumGen( FakeGumGenConfig config )
     }
     _teeth_meshes = std::make_unique<TeethMeshes>(_config.upper);
     _teeth_meshes->InitFromOralScanMesh(*_scanmesh);
-    _teeth_meshes->AlignMeshes(_scanmesh->_obb_up, _scanmesh->_obb_center);
+    //_teeth_meshes->AlignMeshes(_scanmesh->_obb_up, _scanmesh->_obb_center);
     _teeth_meshes->LoadTeethOritFromJson(_config.frame_json);
     if(_config.debug)
     {
@@ -172,21 +176,24 @@ FakeGumGen::FakeGumGen( FakeGumGenConfig config )
         timer.start();
         std::cout << "Resample and Smooth Edges...";
     }
-
+    
+    AABBTree aabb_tree(CGAL::faces(ori_scanmesh).first, CGAL::faces(ori_scanmesh).second, ori_scanmesh);
+    if(aabb_tree.empty())
+    {
+        std::cout << "error" << ori_scanmesh.size_of_vertices() << " " << ori_scanmesh.size_of_facets() << std::endl;
+    }
     for (int i = 11; i < 49; i++)
     {
         if (gumline_edges[i].empty())
             continue;
-
         for (auto hh : gumline_edges[i])
             _gumlines[i].push_back( ToEigen( hh->vertex()->point() ).cast<float>() );
         if(EXPORT_GUM_LINES)
             write_gumline(_gumlines[i], std::string("gumline_old") + std::to_string(i) + std::string(".obj"));
-
+        _gumlines[i] = ResampleGumLine(_gumlines[i]);
+        //SmoothAndProj(_gumlines[i], 10, aabb_tree);
         auto center = std::accumulate(_gumlines[i].begin(), _gumlines[i].end(), Eigen::Vector3f(0.f, 0.f, 0.f)) / _gumlines[i].size();
-        _gumlines[i] = ResampleGumLine( _gumlines[i], center, _teeth_meshes->_teeth_updir[i] );
-        if(EXPORT_RESAMPLE_GUM_LINES)
-            write_gumline(_gumlines[i], std::string("gumline") + std::to_string(i) + std::string(".obj"));
+        //_gumlines[i] = ResampleGumLine( _gumlines[i], center, _teeth_meshes->_teeth_pca_dir[i] );
     }
     if(_config.debug)
     {
@@ -196,8 +203,17 @@ FakeGumGen::FakeGumGen( FakeGumGenConfig config )
 
     std::array<std::optional<Eigen::Vector3f>, 49> centers = ToothCenterPoints( _gumlines );
 
-    FillEmptyTeeth(_gumlines, centers);
-
+    //FillEmptyTeeth(_gumlines, centers);
+    if(EXPORT_RESAMPLE_GUM_LINES)
+    {
+        for(int i = 11; i < 49; i++)
+        {
+            if(!_gumlines[i].empty())
+            {
+                write_gumline(_gumlines[i], std::string("gumline") + std::to_string(i) + std::string(".obj"));
+            }
+        }
+    }
     if(_config.upper)
     {
         for (int i = 18; i >= 11; i--)
@@ -284,32 +300,47 @@ FakeGumGen::GenerateOneStep( const std::array<Eigen::Matrix4f, 49>& transforms )
 
     float new_bottom_pos =  _config.gum_bottom;
 
+    using Vertex_point_map = boost::property_map<Polyhedron, CGAL::vertex_point_t>::type;
+    using TreeTraitsBase = CGAL::Search_traits_3<Polyhedron::Traits::Kernel>;
+    using TreeTraits = CGAL::Search_traits_adapter<boost::graph_traits<Polyhedron>::vertex_descriptor, Vertex_point_map, TreeTraitsBase>;
+    typedef CGAL::Orthogonal_k_neighbor_search<TreeTraits> Neighbor_search;
+    typedef Neighbor_search::Tree KdTree;
+
     std::vector<Eigen::MatrixXd> igl_Vs(cur_center_pairs.size());
     std::vector<Eigen::MatrixXi> igl_Fs(cur_center_pairs.size());
+    std::vector<std::pair<std::unique_ptr<Polyhedron>, int>> seperate_gums(cur_center_pairs.size());
+    std::vector<std::pair<std::unique_ptr<KdTree>, Vertex_point_map>> seperate_gum_acc(cur_center_pairs.size());
 #pragma omp parallel for
     for (int i = 0; i < cur_center_pairs.size(); i++)
     {
         int label = cur_center_pairs[i].second;
         Eigen::Vector3f dir;
+        std::optional<Eigen::Vector3f> to_prev_center;
+        std::optional<Eigen::Vector3f> to_next_center;
         if (i == 0)
         {
             dir = (cur_center_pairs[1].first - cur_center_pairs[0].first).normalized();
+            to_next_center = cur_center_pairs[1].first - cur_center_pairs[0].first;
         }
         else if (i == cur_center_pairs.size() - 1)
         {
             dir = (cur_center_pairs[i].first - cur_center_pairs[i - 1].first).normalized();
+            to_prev_center = cur_center_pairs[i - 1].first - cur_center_pairs[i].first;
         }
         else
         {
             dir = (cur_center_pairs[i].first - cur_center_pairs[i - 1].first).normalized();
             dir += (cur_center_pairs[i + 1].first - cur_center_pairs[i].first).normalized();
             dir /= 2.f;
+            to_next_center = cur_center_pairs[i + 1].first - cur_center_pairs[i].first;
+            to_prev_center = cur_center_pairs[i - 1].first - cur_center_pairs[i].first;
         }
 
-        auto gum = CreateGumForOneTooth( cur_gumline[label], cur_center_pairs[i].first, dir, label, cur_pca_centroids[label], cur_pca_dirs[label], new_bottom_pos );
+        auto gum = CreateGumForOneTooth( cur_gumline[label], cur_center_pairs[i].first, dir, label,
+         cur_pca_centroids[label], cur_pca_dirs[label], new_bottom_pos, to_prev_center, to_next_center );
         if(EXPORT_SINGLE_MESH)
         {
-            CGAL::IO::write_PLY(std::string("gum") + std::to_string(label) + std::string(".ply"), *gum );
+            gum->WriteOBJ(std::string("gum") + std::to_string(label) + std::string(".obj"));
         }
         if(_config.debug)
         {
@@ -329,14 +360,15 @@ FakeGumGen::GenerateOneStep( const std::array<Eigen::Matrix4f, 49>& transforms )
             std::vector<hHalfedge> non_manifold_vertices;
             CGAL::Polygon_mesh_processing::non_manifold_vertices( *gum, std::back_inserter(non_manifold_vertices));
             std::cout << non_manifold_vertices.size() << std::endl;
-            printf("Single Gum %d, v=%zd; try union...\n", label, gum->size_of_vertices());
+            printf("Single Gum %d, v=%zd\n", label, gum->size_of_vertices());
         }
 
         auto [V, F] = gum->WriteToEigen();
         igl_Vs[i] = std::move(V);
         igl_Fs[i] = std::move(F);
-        //CGAL::copy_face_graph( *gum, final_gum );
-        std::cout << "success." << std::endl;
+        Vertex_point_map vpmap = CGAL::get(CGAL::vertex_point, *gum);
+        seperate_gum_acc[i] = std::make_pair(std::make_unique<KdTree>(CGAL::vertices(*gum).begin(), CGAL::vertices(*gum).end(), KdTree::Splitter(), TreeTraits(vpmap)), vpmap);
+        seperate_gums[i] = std::move(std::make_pair(std::move(gum), label));
     }
 
     Polyhedron final_gum;
@@ -359,22 +391,20 @@ FakeGumGen::GenerateOneStep( const std::array<Eigen::Matrix4f, 49>& transforms )
             final_F = std::move(tempF);
 
             // fix non-manifold
-            // std::vector<Polyhedron::Point_3> final_points;
-            // std::vector<TTriangle<Polyhedron::Vertex::size_type>> final_faces;
-            // for(int r = 0; r < final_V.rows(); r++)
-            //     final_points.emplace_back(final_V(r, 0), final_V(r, 1), final_V(r, 2));
-            // for(int r = 0; r < final_F.rows(); r++)
-            //     final_faces.emplace_back(final_F(r, 0), final_F(r, 1), final_F(r, 2));
-            // Polyhedron fixed_mesh;
-            // FixMesh(final_points, final_faces, fixed_mesh, true, 1000, false, false, 0, 0, false, 10);
-            // auto pair = fixed_mesh.WriteToEigen();
-            // final_V = std::move(pair.first);
-            // final_F = std::move(pair.second);
+            std::vector<Polyhedron::Point_3> final_points;
+            std::vector<TTriangle<Polyhedron::Vertex::size_type>> final_faces;
+            for(int r = 0; r < final_V.rows(); r++)
+                final_points.emplace_back(final_V(r, 0), final_V(r, 1), final_V(r, 2));
+            for(int r = 0; r < final_F.rows(); r++)
+                final_faces.emplace_back(final_F(r, 0), final_F(r, 1), final_F(r, 2));
+            Polyhedron fixed_mesh;
+            FixMesh(final_points, final_faces, fixed_mesh, true, 1000, false, false, 0, 0, false, 10);
+            auto pair = fixed_mesh.WriteToEigen();
+            final_V = std::move(pair.first);
+            final_F = std::move(pair.second);
         }
     }
     final_gum.LoadFromEigen(final_V, final_F);
-
-    //return final_gum;
 
     std::vector<hHalfedge> border_edges = final_gum.FindHoles();
 
@@ -405,6 +435,23 @@ FakeGumGen::GenerateOneStep( const std::array<Eigen::Matrix4f, 49>& transforms )
         CGAL::Polygon_mesh_processing::non_manifold_vertices( final_gum, std::back_inserter(non_manifold_vertices));
         std::cout << non_manifold_vertices.size() << std::endl;
     }
+
+    // Mark labels
+    for(auto& hv : CGAL::vertices(final_gum))
+    {
+        double min_dist = std::numeric_limits<double>::max();
+        for(auto& [gum, vpmap] : seperate_gum_acc)
+        {
+            Neighbor_search::Distance dist(vpmap);
+            Neighbor_search search(*gum, hv->point(), 1, 0.0, true, dist);
+            if(search.begin()->second < min_dist)
+            {
+                min_dist = search.begin()->second;
+                hv->label = search.begin()->first->label;
+            }
+        }
+    }
+    final_gum.WriteOBJ("labeled_gum" + std::to_string(_config.upper) + ".obj");
 
     std::vector<hFacet> smooth_faces;
     for(auto hf = final_gum.facets_begin(); hf != final_gum.facets_end(); hf++)
@@ -443,7 +490,7 @@ FakeGumGen::GenerateOneStep( const std::array<Eigen::Matrix4f, 49>& transforms )
 
     _weights = ComputeWeights( final_gum );
 
-    AlignGumMeshBackward( final_gum );
+    //AlignGumMeshBackward( final_gum );
     final_gum.UpdateNormal();
     return final_gum;
 }
@@ -461,7 +508,7 @@ FakeGumGen::ClipFinalGum( Polyhedron& mesh, float gum_bottom)
     auto border_edges = mesh.FindHoles();
     for(auto hh : border_edges)
     {
-        auto [patch_faces, patch_vertices] = mesh.CloseHole(hh, true, true);
+        auto [patch_faces, patch_vertices] = mesh.CloseHole(hh, false, false);
 //        for(auto hf : patch_faces)
 //        {
 //            auto p0 = ToEigen(hf->halfedge()->vertex()->point());
@@ -636,11 +683,17 @@ FakeGumGen::FillEmptyTeeth(std::array<std::vector<Eigen::Vector3f>, 49>& gumline
             int diff = next_valid_idx - idx;
             Eigen::Vector3f pos = 1.f / (float)(diff + 1) * ( next_valid_pos - prev_valid_pos) + prev_valid_pos;
             centers[label] = pos;
+            Eigen::Vector3f up = (_teeth_meshes->_teeth_pca_dir[indices[idx - 1]] + _teeth_meshes->_teeth_pca_dir[indices[next_valid_idx]]) * 0.5f;
+            _teeth_meshes->_teeth_pca_dir[indices[idx]] = up;
+            _teeth_meshes->_teeth_updir[indices[idx]] = up;
+            _teeth_meshes->_teeth_pca_centroid[indices[idx]] = (_teeth_meshes->_teeth_pca_centroid[indices[idx - 1]] + _teeth_meshes->_teeth_pca_centroid[indices[next_valid_idx]]) * 0.5f;
 
             for(int j = 0; j < _config.nb_sample; j++)
             {
-                float angle = (float)(_config.upper ? j : _config.nb_sample - j) / _config.nb_sample * 2.f * 3.1415f;
-                gumlines[label].push_back(centers[label].value() + _config.gum_width_list[label] * 0.5f * Eigen::Vector3f( std::cos(angle), std::sin(angle), 0.f ));
+                float angle = (float)(_config.upper ? j : (_config.nb_sample - j)) / _config.nb_sample * 2.f * 3.1415f;
+                Eigen::Vector3f u = up.cross(Eigen::Vector3f(1, 0, 0)).normalized();
+                Eigen::Vector3f v = up.cross(u).normalized();
+                gumlines[label].push_back(centers[label].value() + _config.gum_width_list[label] * 0.5f * (std::cos(angle) * v + std::sin(angle) * u));
             }
 
             std::cout << "Add Tooth Between " << indices[idx - 1] << " and " << indices[next_valid_idx] << std::endl;
@@ -753,9 +806,27 @@ FakeGumGen::SmoothGumLine(std::vector<Eigen::Vector3f>& points, int nb_iteration
     }
 }
 
+void
+FakeGumGen::SmoothAndProj( std::vector<Eigen::Vector3f>& points, int nb_iterate, const FakeGumGen::AABBTree& aabb_tree )
+{
+    for(int i = 0; i < nb_iterate; i++)
+    {
+        std::vector<Eigen::Vector3f> result( points.size() );
+        for(int j = 0; j < points.size(); j++)
+        {
+            size_t prev = (j == 0) ? points.size() - 1 : j - 1;
+            size_t next = (j == points.size() - 1) ? 0 : j + 1;
+            result[j] = (points[prev] + points[next]) * 0.5f;
+            result[j] = ToEigen(aabb_tree.closest_point(CGAL::ORIGIN + ToCGAL<float, KernelEpick>(result[j]))).cast<float>();
+        }
+        points = std::move(result);
+    }
+}
+
 std::unique_ptr<Polyhedron>
 FakeGumGen::CreateGumForOneTooth(const std::vector<Eigen::Vector3f>& points, Eigen::Vector3f center,
- Eigen::Vector3f dir, int label, Eigen::Vector3f pca_centroid, Eigen::Vector3f pca_dir, float gum_bottom )
+ Eigen::Vector3f dir, int label, Eigen::Vector3f pca_centroid, Eigen::Vector3f pca_dir,
+  float gum_bottom, std::optional<Eigen::Vector3f> to_prev_center, std::optional<Eigen::Vector3f> to_next_center )
 {
     if(_config.debug)
     {
@@ -763,17 +834,11 @@ FakeGumGen::CreateGumForOneTooth(const std::vector<Eigen::Vector3f>& points, Eig
     }
     std::unique_ptr<Polyhedron> gum = std::make_unique<Polyhedron>( false );
 
-    dir.z() = 0.f;
+    //dir.z() = 0.f;
     dir.normalize();
 
-    Eigen::Vector3f center_bottom = center;
-    center_bottom.z() = gum_bottom;
-
-    Eigen::Vector3f side_dir = (Eigen::Vector3f(0, 0, 1).cross( dir )).normalized();
-    Eigen::Vector3f front = dir * _config.gum_width_list[label] * 1.4f;
-    Eigen::Vector3f back = -dir * _config.gum_width_list[label] * 1.4f;
-    Eigen::Vector3f left = -side_dir * _config.gum_width_list[label] * 0.9f;
-    Eigen::Vector3f right = side_dir * _config.gum_width_list[label] * 1.1f;
+    Eigen::Vector3f center_bottom = center + pca_dir * (_config.upper ? (center.z() - gum_bottom) : (gum_bottom - center.z()));
+    Eigen::Vector3f side_dir = (pca_dir.cross( dir )).normalized();
 
     /*
     7  0  1
@@ -782,45 +847,66 @@ FakeGumGen::CreateGumForOneTooth(const std::vector<Eigen::Vector3f>& points, Eig
      / | \
     5  4  3
     */
-    std::array<Eigen::Vector3f, 16> outline_points = {
-        center_bottom + front,
-        center_bottom + front + 0.3f * right,
-        center_bottom + right + front,
-        center_bottom + right + 0.3f * front,
-        center_bottom + right,
-        center_bottom + right + 0.3f * back,
-        center_bottom + back + right,
-        center_bottom + back + 0.3f * right,
-        center_bottom + back,
-        center_bottom + back + 0.3f * left,
-        center_bottom + back + left,
-        center_bottom + left + 0.3f * back,
-        center_bottom + left,
-        center_bottom + left + 0.3f * front,
-        center_bottom + left + front,
-        center_bottom + left * 0.3f + front,
+
+    std::array<Eigen::Vector2d, 16> outline_points2d = {
+        Eigen::Vector2d{0.0, 1.0},
+        Eigen::Vector2d{0.3, 1.0},
+        Eigen::Vector2d{1.0, 1.0},
+        Eigen::Vector2d{1.0, 0.3},
+        Eigen::Vector2d{1.0, 0.0},
+        Eigen::Vector2d{1.0, -0.3},
+        Eigen::Vector2d{1.0, -1.0},
+        Eigen::Vector2d{0.3, -1.0},
+        Eigen::Vector2d{0.0, -1.0},
+        Eigen::Vector2d{-0.3, -1.0},
+        Eigen::Vector2d{-1.0, -1.0},
+        Eigen::Vector2d{-1.0, -0.3},
+        Eigen::Vector2d{-1.0, 0.0},
+        Eigen::Vector2d{-1.0, 0.3},
+        Eigen::Vector2d{-1.0, 1.0},
+        Eigen::Vector2d{-0.3, 1.0},
     };
+    for(auto& p2d : outline_points2d)
+    {
+        if(p2d.y() > 0)
+            p2d.y() *= _config.gum_width_list[label] * 1.5f;
+        else
+            p2d.y() *= _config.gum_width_list[label] * 0.8f;
+        //p2d.x() *= _config.gum_width_list[label] * 0.7f;
+        if(p2d.x() > 0)
+        {
+            if(to_next_center.has_value())
+                p2d.x() *= to_next_center.value().norm() * 2.0;
+        }
+        else
+        {
+            if(to_prev_center.has_value())
+                p2d.x() *= to_prev_center.value().norm() * 2.0;
+        }
+    }
 
     std::vector<std::shared_ptr<Bezier::Curve>> outline_curve_list;
-    for (int i = 1; i < outline_points.size(); i += 2)
+    for (int i = 1; i < outline_points2d.size(); i += 2)
     {
         Eigen::MatrixX2d points_2d( 3, 2 );
-        points_2d.row( 0 ) = Eigen::Vector2d( outline_points[i].x(), outline_points[i].y() ).transpose();
-        points_2d.row( 1 ) = Eigen::Vector2d( outline_points[(i + 1) % 16].x(), outline_points[(i + 1) % 16].y() ).transpose();
-        points_2d.row( 2 ) = Eigen::Vector2d( outline_points[(i + 2) % 16].x(), outline_points[(i + 2) % 16].y() ).transpose();
+        points_2d.row( 0 ) = outline_points2d[i];
+        points_2d.row( 1 ) = outline_points2d[(i + 1) % outline_points2d.size()];
+        points_2d.row( 2 ) = outline_points2d[(i + 2) % outline_points2d.size()];
         outline_curve_list.push_back( std::make_shared<Bezier::Curve>( points_2d ) );
     }
     Bezier::PolyCurve outline_curve( outline_curve_list );
 
     std::vector<Eigen::Vector3f> outline_resample( points.size() );
     Bezier::PointVector polyline = outline_curve.polyline( 1.0001, 0.1f );
+    CGAL::Simple_cartesian<float>::Plane_3 bottom_proj_plane(CGAL::ORIGIN + ToCGAL(center_bottom), ToCGAL(pca_dir));
+    Eigen::Vector3f u = dir.normalized();
+    Eigen::Vector3f v = side_dir.normalized();
+
     for (size_t i = 0; i < points.size(); i++)
     {
-        Eigen::Vector2f gumline2d( points[i].x() - center.x() + center_bottom.x(), points[i].y() -center.y() + center_bottom.y());
-        //Eigen::Vector2f gumline2d( points[i].x(), points[i].y());
-        Eigen::Vector2f center2d( center_bottom.x(), center_bottom.y() );
-        Eigen::Vector2f endpos = center2d + (gumline2d - center2d) * 100.f;
-
+        Eigen::Vector3f proj_diff = ToEigen(bottom_proj_plane.projection(CGAL::ORIGIN + ToCGAL(points[i]))) - center_bottom;
+        Eigen::Vector2f gumline2d( proj_diff.dot(u), proj_diff.dot(v) );
+        Eigen::Vector2f center2d( 0.f, 0.f );
         for (int j = 0; j < polyline.size(); j++)
         {
             Eigen::Vector2f seg0 = polyline[j].cast<float>();
@@ -846,91 +932,83 @@ FakeGumGen::CreateGumForOneTooth(const std::vector<Eigen::Vector3f>& points, Eig
             if (t > 0 && s > 0 && s < (seg1 - seg0).norm())
             {
                 Eigen::Vector2f p2d = o2 + s * d2;
-                outline_resample[i] = Eigen::Vector3f( p2d.x(), p2d.y(), center_bottom.z());
+                outline_resample[i] = p2d.x() * u + p2d.y() * v + center_bottom;
                 break;
             }
         }
+       // outline_resample[i] = polyline[min_j].x() * u + polyline[min_j].y() * v + center_bottom;
     }
-
-    write_gumline(outline_resample, std::string("../../test/2/bottomline") + std::to_string(label) + std::string(".obj"));
+    if(EXPORT_BOTTOM_LINES)
+        write_gumline(outline_resample, std::string("bottomline") + std::to_string(label) + std::string(".obj"));
 
     //Gen side face
-    center.z() += ( _config.upper ? 1.0 : -1.0 ) * _config.gum_depth_list[label] * 3;
+    Eigen::Vector3f center_ori = center;
+    center -= static_cast<float>(_config.gum_depth_list[label]) * 3 * pca_dir;
     std::vector<std::vector<Eigen::Vector3f>> side_points( points.size() );
     std::vector<int> side_points_labels( points.size() );
     for (int i = 0; i < points.size(); i++)
     {
         Eigen::Vector3f gumline_point = points[i];
-        gumline_point.z() += (_config.upper ? -1.f : 1.f) * 0.5f;
-        Eigen::Vector3f outline_point = outline_resample[i];
-        if(label >= 13 && label <= 13 || label >= 23 && label <= 23 || label >= 33 && label <= 33 || label >= 43 && label <= 43)
-        {
-            outline_point = 0.8f * outline_point + 0.2f * center_bottom;
-        }
+        Eigen::Vector3f center_to_gumline = gumline_point - center;
+        Eigen::Vector3f center_to_gumline_v = pca_dir.dot(center_to_gumline) * pca_dir;
+        Eigen::Vector3f center_to_gumline_h = center_to_gumline - center_to_gumline_v;
 
-        Eigen::Vector3f ctrl_cg = gumline_point;
-        ctrl_cg.z() = (ctrl_cg.z() + center.z()) * 0.5f;
-        Eigen::Vector3f ctrl_cg1 = (center + gumline_point) * 0.5f;
-        ctrl_cg1.z() = center.z();
-        Eigen::Vector3f extrude_dir = gumline_point - center;
-        extrude_dir.z() = 0;
-        extrude_dir.normalize();
+        //gumline_point.z() += (_config.upper ? -1.f : 1.f) * 0.5f;
+        //float thickness = 1.0f * std::abs(center_to_gumline_h.dot(dir));
+        float thickness = 1.0f;
+        // if(to_next_center.has_value())
+        // {
+        //     if(center_to_gumline_h.dot(to_next_center.value()) > 0)
+        //         thickness += std::pow(center_to_gumline_h.normalized().dot(to_next_center.value().normalized()), 2.0) * to_next_center.value().norm();
+        // }
+        // else
+        // {
+        //     thickness += std::pow(center_to_gumline_h.normalized().dot(to_prev_center.value().normalized()), 2.0) * to_prev_center.value().norm();
+        // }
+        // if(to_prev_center.has_value())
+        // {
+        //     if(center_to_gumline_h.dot(to_prev_center.value()) > 0)
+        //         thickness += std::pow(center_to_gumline_h.normalized().dot(to_prev_center.value().normalized()), 2.0) * to_prev_center.value().norm();
+        // }
+        // else
+        // {
+        //     thickness += std::pow(center_to_gumline_h.normalized().dot(to_next_center.value().normalized()), 2.0) * to_next_center.value().norm();
+        // }
+
+        Eigen::Vector3f outline_point = outline_resample[i];
+        Eigen::Vector3f ctrl_cg = gumline_point - center_to_gumline_h * 0.5f;
+        Eigen::Vector3f ctrl_cg1 = center + center_to_gumline_h * 0.5f;
+        Eigen::Vector3f extrude_dir = center_to_gumline_h.normalized();
         //extrude_dir = ((gumline_point - center).cross(_teeth_updir[label])).cross(_teeth_updir[label]).normalized();
         float extrude_w = (5.f + _config.gum_width_list[label] * 0.5f) * 0.1f * _config.extrude_width;
         float h = gumline_point.z() - outline_point.z();
-        Eigen::Vector3f ctrl_go0 = outline_point;
-        ctrl_go0.x() = ctrl_go0.x() - center_bottom.x() + center.x();
-        ctrl_go0.y() = ctrl_go0.y() - center_bottom.y() + center.y();
-        ctrl_go0.z() += h * 1.1f;
-        Eigen::Vector3f ctrl_go1 = outline_point;
-        ctrl_go1.z() += h * 0.0f;
-        ctrl_go0 += extrude_dir * extrude_w * 1.0f;
-        ctrl_go1 += extrude_dir * extrude_w * 1.0f;
-
-        Eigen::Vector3f u = (outline_point - gumline_point).normalized();
-        Eigen::Vector3f normal = (u.cross( center - gumline_point )).normalized();
-        Eigen::Vector3f v = u.cross( normal ).normalized();
-
-        Eigen::Vector2d gumline_point2d( 0.0, 0.0 );
-        Eigen::Vector2d outline_point2d( u.dot( outline_point - gumline_point ), v.dot( outline_point - gumline_point ) );
-        Eigen::Vector2d ctrl_cg_2d( u.dot( ctrl_cg - gumline_point ), v.dot( ctrl_cg - gumline_point ) );
-        Eigen::Vector2d ctrl_cg1_2d( u.dot( ctrl_cg1 - gumline_point ), v.dot( ctrl_cg1 - gumline_point ) );
-        Eigen::Vector2d ctrl_go0_2d( u.dot( ctrl_go0 - gumline_point ), v.dot( ctrl_go0 - gumline_point ) );
-        Eigen::Vector2d center2d( u.dot( center - gumline_point ), v.dot( center - gumline_point ) );
-        Eigen::Vector2d ctrl_go1_2d( u.dot( ctrl_go1 - gumline_point ), v.dot( ctrl_go1 - gumline_point ) );
-
-        auto curve_list = std::vector<std::shared_ptr<Bezier::Curve>> {
-                std::make_shared<Bezier::Curve>( std::vector<Eigen::Vector2d>{center2d, ctrl_cg1_2d, ctrl_cg_2d, gumline_point2d} ),
-                std::make_shared<Bezier::Curve>( std::vector<Eigen::Vector2d>{outline_point2d, ctrl_go1_2d, ctrl_go0_2d, gumline_point2d} )
-        };
-        Bezier::PolyCurve side_curve{ curve_list };
+        Eigen::Vector3f ctrl_go0 = outline_point + (center - center_bottom) + center_to_gumline_h.normalized() * thickness;
+        Eigen::Vector3f ctrl_go1 = outline_point + center_to_gumline_h.normalized() * thickness;
+        //ctrl_go0 += extrude_dir * extrude_w * 1.0f;
+        //ctrl_go1 += extrude_dir * extrude_w * 1.0f;
         
+        eigen_bezier::Curve<float> curve1({center, ctrl_cg1, ctrl_cg, gumline_point});
+        eigen_bezier::Curve<float> curve2({gumline_point, ctrl_go0, ctrl_go1, outline_point});
+        for(int j = 0; j < 10; j++)
+        {
+            float t = (float)j / 10.f;
+            side_points[i].push_back(curve1.Eval(t));
+        }
+        for(int j = 0; j < 10; j++)
+        {
+            float t = (float)j / 10.f;
+            // if(j < 5)
+            //     t = j / 20.f;
+            // else
+            //     t = 0.25f + (j - 5.f) / (20.f / 3);
+            side_points[i].push_back(curve2.Eval(t));
+        }
         side_points_labels[i] = label;
-        for (int j = 0; j <= 20; j++)
-        {
-            float t = (double)j / 10.f;
-            if(j >= 10 && j < 15)
-            {
-                t = 1.f + (float)(j - 10.0f) / 20.f;
-            }
-            else if(j >= 15)
-            {
-                t = 1.25f + (float)(j - 15.0f) / (20.f / 3);
-            }
-            Eigen::Vector2d p2d = side_curve.valueAt( t );
-            Eigen::Vector3f p = gumline_point + (float)p2d.x() * u + (float)p2d.y() * v;
-            side_points[i].push_back( p );
-        }
 
-        std::vector<Eigen::Vector3f> output_sideline;
-        for(int j = 0; j < 100; j++)
-        {
-            Eigen::Vector2d p2d = side_curve.valueAt( (float)j / 50.f );
-            Eigen::Vector3f p = gumline_point + (float)p2d.x() * u + (float)p2d.y() * v;
-            output_sideline.push_back(p);
-        }
         if(EXPORT_CURVES)
-            write_gumline(output_sideline, "side" + std::to_string(label) + ".obj", false);
+        {
+            write_gumline(side_points[i], "side" + std::to_string(label) + ".obj", false);
+        }
     }
 
     if(_config.debug)
@@ -972,7 +1050,7 @@ FakeGumGen::CreateGumForOneTooth(const std::vector<Eigen::Vector3f>& points, Eig
     //     gum->erase_facet( hf->halfedge() );
     // }
     
-    FixMesh(*gum, false, 1000, false, true, 0, 0.f, false, 10);
+    FixMeshWithLabel(*gum, false, 1000, false, true, 0, 0.f, false, 10);
 
     if(_config.debug)
     {
@@ -989,7 +1067,7 @@ FakeGumGen::CreateGumForOneTooth(const std::vector<Eigen::Vector3f>& points, Eig
     //LaplacianSmooth(*gum, 5, true);
     //gum->WriteOFF("./test" + std::to_string(label) + ".off");
 
-    FixMesh(*gum, true, 1000, false, false, 0, 0.f, false, 10);
+    FixMeshWithLabel(*gum, true, 1000, false, false, 0, 0.f, false, 10);
     if(_config.debug)
     {
         std::cout << "Success" << std::endl;
@@ -1098,28 +1176,27 @@ FakeGumGen::ComputeWeights( const Polyhedron& gum_mesh )
             auto& borders = _gumlines[t];
 
             //min dist to borders
-            float min_dist_to_borders = std::numeric_limits<float>::max();
+            double min_dist_to_borders = std::numeric_limits<float>::max();
             for(int i = 0; i < borders.size(); i++)
             {
                 int i0 = i;
                 int i1 = (i + 1) % borders.size();
                 auto e0 = _gumlines[t][i0];
                 auto e1 = _gumlines[t][i1];
-                float dist_to_segment = static_cast<float>( CGAL::squared_distance(
+                double dist_to_segment = CGAL::squared_distance(
                     KernelEpick::Segment_3{ CGAL::ORIGIN + ToCGAL<float, KernelEpick>(e0), CGAL::ORIGIN + ToCGAL<float, KernelEpick>(e1) },
-                    CGAL::ORIGIN + ToCGAL<float, KernelEpick>(p))
-                );
+                    CGAL::ORIGIN + ToCGAL<float, KernelEpick>(p));
                 if(dist_to_segment < min_dist_to_borders)
                     min_dist_to_borders;
             }
 
-            float dist_to_frame = CGAL::squared_distance(
+            double dist_to_frame = CGAL::squared_distance(
                 KernelEpick::Line_3{ CGAL::ORIGIN + ToCGAL<float, KernelEpick>(tcenter), ToCGAL<float, KernelEpick>(tdir) },
                 CGAL::ORIGIN + ToCGAL<float, KernelEpick>(p)
             );
 
-            float final_dist = std::min(min_dist_to_borders, dist_to_frame);
-            weights.emplace_back(t, final_dist);
+            double final_dist = std::min(min_dist_to_borders, dist_to_frame);
+            weights.emplace_back(t, static_cast<float>(final_dist));
         }
         
         std::sort(weights.begin(), weights.end(), []( auto& lh, auto& rh ) { return lh.second < rh.second; });

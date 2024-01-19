@@ -5,6 +5,9 @@
 #ifndef ELASTICITY_FAKEGUMGEN_H
 #define ELASTICITY_FAKEGUMGEN_H
 #include "Polyhedron.h"
+#include <CGAL/AABB_tree.h>
+#include <CGAL/AABB_face_graph_triangle_primitive.h>
+#include <CGAL/AABB_traits.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include "../Bezier/bezier.h"
@@ -32,7 +35,7 @@ struct FakeGumGenConfig
     float gum_bottom = -45.f;
     std::array<float, 49> gum_width_list;
     std::array<float, 49> gum_depth_list;
-    int nb_sample = 35;
+    int nb_sample = 50;
     float extrude_width = 1.25f;
 };
 
@@ -108,6 +111,10 @@ void FakeGumBuilder2<HDS>::operator()( HDS& hds )
 class FakeGumGen
 {
 public:
+    using AABBPrimitive = CGAL::AABB_face_graph_triangle_primitive<OralScanMesh>;
+    using AABBTraits = CGAL::AABB_traits<OralScanMesh::Traits::Kernel, AABBPrimitive>;
+    using AABBTree = CGAL::AABB_tree<AABBTraits>;
+
     explicit FakeGumGen(FakeGumGenConfig config );
 
     void AlignGumMeshBackward( Polyhedron& mesh );
@@ -121,12 +128,13 @@ public:
     std::vector<Eigen::Vector3f> ResampleGumLine( const std::vector<Eigen::Vector3f>& edges );
     std::vector<Eigen::Vector3f> ResampleGumLine( const std::vector<Eigen::Vector3f>& edges, Eigen::Vector3f center, Eigen::Vector3f updir );
     void SmoothGumLine( std::vector<Eigen::Vector3f>& points, int nb_iteration );
+    void SmoothAndProj( std::vector<Eigen::Vector3f>& points, int nb_iterator, const AABBTree& aabb_tree );
     std::array<std::optional<Eigen::Vector3f>, 49> ToothCenterPoints( const std::array<std::vector<Eigen::Vector3f>, 49>& edges );
     void FillEmptyTeeth( std::array<std::vector<Eigen::Vector3f>, 49>& gumlines, std::array<std::optional<Eigen::Vector3f>, 49>& centers);
 
     std::unique_ptr<Polyhedron> CreateGumForOneTooth(
         const std::vector<Eigen::Vector3f>& points, Eigen::Vector3f center, Eigen::Vector3f dir, int label,
-         Eigen::Vector3f pca_centroid, Eigen::Vector3f pca_dir, float gum_bottom );
+         Eigen::Vector3f pca_centroid, Eigen::Vector3f pca_dir, float gum_bottom, std::optional<Eigen::Vector3f> to_prev_center, std::optional<Eigen::Vector3f> to_next_center );
 
     void LaplacianSmooth( Polyhedron& mesh, int iterate_num, bool skip_gumline );
     std::vector<std::array<std::pair<int, float>, 3>> ComputeWeights( const Polyhedron& gum_mesh );

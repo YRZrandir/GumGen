@@ -136,7 +136,6 @@ void OralScanMesh::ComputeOrientation()
 
 void OralScanMesh::AlignMesh()
 {
-
     Eigen::Quaternion<double> q = Eigen::Quaternion<double>::FromTwoVectors( _obb_up, Eigen::Vector3d( 0, 0, _upper ? -1 : 1 ) );
     Eigen::Matrix3d rot = q.matrix();
     for (auto hv = vertices_begin(); hv != vertices_end(); hv++)
@@ -315,7 +314,7 @@ void TeethMeshes::AlignMeshes( Eigen::Vector3d obb_up, Eigen::Vector3d obb_cente
     _obb_up = obb_up;
     _obb_center = obb_center;
 
-    Eigen::Quaternion<float> q = Eigen::Quaternion<float>::FromTwoVectors( _obb_up.cast<float>(), Eigen::Vector3f( 0, 0, _upper ? -1 : 1 ) );
+    Eigen::Quaternion<float> q = Eigen::Quaternion<float>::FromTwoVectors( _obb_up.cast<float>(), Eigen::Vector3f( 0.f, 0.f, _upper ? -1.f : 1.f ) );
     Eigen::Matrix3f rot = q.matrix();
 
     for(auto& d : _teeth_updir)
