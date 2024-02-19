@@ -29,6 +29,7 @@
 #include "../eigen_bezier/eigen_bezier.hpp"
 #include <igl/copyleft/cgal/mesh_boolean.h>
 #ifndef __EMSCRIPTEN__
+#define TINYCOLORMAP_WITH_EIGEN
 #include "tinycolormap.hpp"
 #endif
 class Timer
@@ -1180,13 +1181,41 @@ FakeGumGen::ComputeUpdirAndCenterPointsFromOBB(const std::array<Eigen::Vector3f,
 std::vector<std::array<std::pair<int, float>, 3>>
 FakeGumGen::ComputeWeights( const Polyhedron& gum_mesh )
 {
+    static const std::array<Eigen::Vector3d, 10> COLORS = {
+        Eigen::Vector3d{142.0f / 255, 207.0f / 255, 201.0f / 255},
+        Eigen::Vector3d{255.0f / 255, 190.0f / 255, 122.0f / 255},
+        Eigen::Vector3d{250.0f / 255, 127.0f / 255, 111.0f / 255},
+        Eigen::Vector3d{130.0f / 255, 176.0f / 255, 210.0f / 255},
+        Eigen::Vector3d{190.0f / 255, 184.0f / 255, 220.0f / 255},
+        Eigen::Vector3d{40.0f / 255, 120.0f / 255, 181.0f / 255},
+        Eigen::Vector3d{248.0f / 255, 172.0f / 255, 140.0f / 255},
+        Eigen::Vector3d{255.0f / 255, 136.0f / 255, 132.0f / 255},
+        Eigen::Vector3d{84.0f / 255, 179.0f / 255, 69.0f / 255},
+        Eigen::Vector3d{137.0f / 255, 131.0f / 255, 191.0f / 255}
+    };
+    // std::ofstream ofs;
+    // if(_config.upper)
+    // {
+    //     ofs.open("./weightsU.obj");
+    // }
+    // else
+    // {
+    //     ofs.open("./weightsL.obj");
+    // }
+    int label_start = 11;
+    int label_end = 28;
+    if(!_config.upper)
+    {
+        label_start = 31;
+        label_end = 48;
+    }
     std::vector<std::array<std::pair<int, float>, 3>> weight_table;
     for(auto hv = gum_mesh.vertices_begin(); hv != gum_mesh.vertices_end(); hv++)
     {
         Eigen::Vector3f p = ToEigen(hv->point()).cast<float>();
         
         std::vector<std::pair<int, float>> weights;
-        for(int t = 11; t < 49; t++)
+        for(int t = label_start; t <= label_end; t++)
         {
             if(_gumlines[t].empty())
                 continue;
@@ -1230,13 +1259,17 @@ FakeGumGen::ComputeWeights( const Polyhedron& gum_mesh )
             float w_sum = 0.f;
             for(int i = 0; i < 3 && i < weights.size(); i++)
             {
-                weight_table_this[i] = {weights[i].first, 1.f / weights[i].second};
+                float w = weights[i].second;
+                w = std::exp(-w * w / 25.0);
+                weight_table_this[i] = {weights[i].first, w};
                 w_sum += weight_table_this[i].second;
             }
             for(auto& [label, w] : weight_table_this)
                 if(label != 0)
                     w /= w_sum;
         }
+        // Eigen::Vector3d color = COLORS[weight_table_this[0].first % COLORS.size()];
+        // ofs << "v " << p.x() << ' ' << p.y() << ' ' << p.z() << ' ' << color.x() << ' ' << color.y() << ' ' << color.z() << '\n';
         weight_table.push_back(weight_table_this);
     }
     std::cout << "Weights: " << weight_table.size() << std::endl;
