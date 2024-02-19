@@ -196,7 +196,6 @@ std::vector<TTriangle<SizeType>> RemoveNonManifold(const std::vector<typename Ke
     }
 
     std::atomic_int nb_nm_vertices = 0;
-#pragma omp parallel for
     for(int iv = 0; iv < vneighbors.size(); iv++)
     {
         auto& neighbors = vneighbors[iv];
